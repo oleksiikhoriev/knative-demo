@@ -1,0 +1,124 @@
+KNATIVE DEMO INSTALL CLUSTER
+
+export CLUSTER_NAME=knative-demo && export CLUSTER_ZONE=europe-west1-b && export PROJECT_NAME=$(gcloud config get-value project) && export DNS_ZONE=knative-zone && export DOMAIN_NAME=knative-demo.ss-ops.com
+
+knative-demo.ss-ops.com
+
+# DNS ZONE name for Cloud DNS
+export DNS_ZONE=knative-zone
+#FQDN for knative ingress
+export DOMAIN_NAME=knative-demo.ss-ops.com.
+
+=============================
+
+gcloud container clusters create ${CLUSTER_NAME} \
+  --zone=${CLUSTER_ZONE} \
+   --cluster-version=latest  \
+   --machine-type=n1-standard-4 \
+   --enable-autoscaling \
+   --min-nodes=2 \
+   --max-nodes=5 \
+   --enable-autorepair \
+   --scopes=service-control,service-management,compute-rw,storage-ro,cloud-platform,logging-write,monitoring-write,pubsub,datastore \
+   --num-nodes=3
+
+=============================
+
+gcloud services enable \
+     cloudapis.googleapis.com \
+     container.googleapis.com \
+     containerregistry.googleapis.com
+
+gcloud beta container clusters create ${CLUSTER_NAME} \
+     --addons=HorizontalPodAutoscaling,HttpLoadBalancing,Istio \
+     --machine-type=n1-standard-4 \
+     --cluster-version=latest \
+     --zone=${CLUSTER_ZONE} \
+     --enable-stackdriver-kubernetes \
+     --enable-ip-alias \
+     --enable-autoscaling \
+     --min-nodes=1 \
+     --max-nodes=10 \
+     --enable-autorepair \
+     --scopes cloud-platform
+
+kubectl api-resources | grep istio
+
+kubectl create clusterrolebinding cluster-admin-binding \
+     --clusterrole=cluster-admin \
+     --user=$(gcloud config get-value core/account)
+
+kubectl apply --selector knative.dev/crd-install=true \
+   --filename https://github.com/knative/serving/releases/download/v0.6.0/serving.yaml \
+   --filename https://github.com/knative/build/releases/download/v0.6.0/build.yaml \
+   --filename https://github.com/knative/eventing/releases/download/v0.6.0/release.yaml \
+   --filename https://github.com/knative/eventing-sources/releases/download/v0.6.0/eventing-sources.yaml \
+   --filename https://github.com/knative/serving/releases/download/v0.6.0/monitoring.yaml \
+   --filename https://raw.githubusercontent.com/knative/serving/v0.6.0/third_party/config/build/clusterrole.yaml
+
+kubectl apply --filename https://github.com/knative/serving/releases/download/v0.6.0/serving.yaml --selector networking.knative.dev/certificate-provider!=cert-manager \
+   --filename https://github.com/knative/build/releases/download/v0.6.0/build.yaml \
+   --filename https://github.com/knative/eventing/releases/download/v0.6.0/release.yaml \
+   --filename https://github.com/knative/eventing-sources/releases/download/v0.6.0/eventing-sources.yaml \
+   --filename https://github.com/knative/serving/releases/download/v0.6.0/monitoring.yaml \
+   --filename https://raw.githubusercontent.com/knative/serving/v0.6.0/third_party/config/build/clusterrole.yaml
+
+export INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+===
+
+gcloud beta dns managed-zones create ${DNS_ZONE} --description="zone for knative sample" --dns-name=${DOMAIN_NAME}
+gcloud dns record-sets transaction start --zone=${DNS_ZONE}
+ 
+gcloud dns record-sets transaction add ${INGRESS_HOST} --name=\*.default.${DOMAIN_NAME} --ttl=300 --type=A --zone=${DNS_ZONE}
+gcloud dns record-sets transaction execute --zone=${DNS_ZONE}
+
+=
+
+cat << EOF > cm-domain.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: config-domain
+   namespace: knative-serving
+data:
+   knative-demo.ss-ops.com: ""
+EOF
+kubectl apply -f cm-domain.yaml
+
+===
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
