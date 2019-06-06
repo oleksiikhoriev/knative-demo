@@ -1,0 +1,99 @@
+Demo 1:
+blue green deployment
+
+Original link:
+https://github.com/knative/docs/blob/master/docs/serving/samples/blue-green-deployment.md
+
+======================
+
+cd DEMO_FOLDER
+
+### show config file ###
+$ cat blue-green-demo-config.yaml
+apiVersion: serving.knative.dev/v1alpha1
+kind: Configuration
+metadata:
+  name: blue-green-demo
+  namespace: default
+spec:
+  revisionTemplate:
+    metadata:
+      labels:
+        knative.dev/type: container
+    spec:
+      container:
+        image: gcr.io/knative-samples/knative-route-demo:blue # The URL to the sample app docker image
+        imagePullPolicy: Always
+        env:
+          - name: T_VERSION
+            value: "blue"
+
+### apply config ###
+$ kubectl apply -f blue-green-demo-config.yaml
+
+### get lastcreated ###
+$ kubectl get config
+LATESTCREATED: blue-green-demo-lfnbh
+
+### add lastcreated ###
+$ vim blue-green-demo-route.yaml
+apiVersion: serving.knative.dev/v1alpha1
+kind: Route
+metadata:
+  name: blue-green-demo # The name of our route; appears in the URL to access the app
+  namespace: default # The namespace we're working in; also appears in the URL to access the app
+spec:
+  traffic:
+    - revisionName: blue-green-demo- !REPLACE_ME!
+      percent: 100 # All traffic goes to this revision
+
+### apply route ###
+$ kubectl apply -f blue-green-demo-route.yaml
+
+### show route and get URL ###
+$ kubectl get route
+NAME              URL 
+blue-green-demo   http://blue-green-demo.default.knative-demo.ss-ops.com
+
+### change config to green ###
+$ vim blue-green-demo-config.yaml
+
+CHANGE TO GREEN
+    spec:
+      container:
+        image: gcr.io/knative-samples/knative-route-demo:green # URL to the new version of the sample app docker image
+        imagePullPolicy: Always
+        env:
+          - name: T_VERSION
+            value: "green" # Updated value for the T_VERSION environment variable
+
+### apply config ###
+$ kubectl apply -f blue-green-demo-config.yaml
+
+### get new latestcreated ###
+$ kubectl get config
+LATESTCREATED: blue-green-demo-v9lzl
+
+### edit route ###
+vim blue-green-demo-route.yaml
+apiVersion: serving.knative.dev/v1alpha1
+kind: Route
+metadata:
+  name: blue-green-demo # Route name is unchanged, since we're updating an existing Route
+  namespace: default
+spec:
+  traffic:
+    - revisionName: blue-green-demo-lcfrd
+      percent: 100 # All traffic still going to the first revision
+    - revisionName: blue-green-demo-
+      percent: 0 # 0% of traffic routed to the second revision
+      name: v2 # A named route
+
+### kubectl dsecribe route blue-green-demo ###
+URL in a STAGE
+
+### edit route ###
+A/B
+
+
+
