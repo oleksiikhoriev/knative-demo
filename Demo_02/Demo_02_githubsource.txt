@@ -1,0 +1,95 @@
+Demo 2:
+GitHub Source
+
+Original link:
+https://github.com/knative/docs/tree/master/docs/eventing/samples/github-source
+
+======================
+
+# Create a simple Knative Service that dumps incoming messages to its log.
+
+### apply service.yaml ###
+kubectl apply -f service.yaml
+
+### create token ###
+https://github.com/settings/tokens
+
+### generate secret ###
+head -c 8 /dev/urandom | base64
+
+### put secrets in config file ###
+vim githubsecret.yaml
+
+### apply githubsecret ###
+kubectl apply -f githubsecret.yaml
+
+### edit github-source -- oleksiikhoriev/knative-demo ###
+vim github-source.yaml
+
+### apply github-source ###
+kubect apply -f github-source.yaml
+
+### Verify Webhook ###
+https://github.com/oleksiikhoriev/knative-demo/settings/hooks
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
