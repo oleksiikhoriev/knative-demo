@@ -1,0 +1,108 @@
+Demo 3:
+Autoscaling
+
+Original link:
+https://github.com/knative/docs/tree/master/docs/serving/samples/autoscale-go
+
+======================
+
+### deploy sample service ###
+kubectl apply -f service.yaml
+
+
+
+	# In Knative 0.2.x and prior versions, the `knative-ingressgateway` service was used instead of `istio-ingressgateway`.
+	INGRESSGATEWAY=knative-ingressgateway
+
+	# The use of `knative-ingressgateway` is deprecated in Knative v0.3.x.
+	# Use `istio-ingressgateway` instead, since `knative-ingressgateway`
+	# will be removed in Knative v0.4.
+	if kubectl get configmap config-istio -n knative-serving &> /dev/null; then
+	    INGRESSGATEWAY=istio-ingressgateway
+	fi
+
+	export IP_ADDRESS=`kubectl get svc $INGRESSGATEWAY --namespace istio-system --output jsonpath="{.status.loadBalancer.ingress[*].ip}"`
+
+### Make a request ###
+curl --header "Host: autoscale-go.default.knative-demo.ss-ops.com" "http://${IP_ADDRESS?}?sleep=100&prime=10000&bloat=5" && kubectl get pods
+
+
+### View the Knative Serving Scaling and Request dashboards ###
+
+kubectl port-forward --namespace knative-monitoring $(kubectl get pods --namespace knative-monitoring --selector=app=grafana  --output=jsonpath="{.items..metadata.name}") 3000
+
+
+### Customization
+
+The autoscaler supports customization through annotations. There are two autoscaler classes built into Knative:
+
+kpa.autoscaling.knative.dev which is the concurrency-based autoscaler described above (the default), and
+
+hpa.autoscaling.knative.dev which delegates to the Kubernetes HPA which autoscales on CPU usage.
+
+
+
+
+### Add HPA (default 80) ###
+      annotations:
+        # Standard Kubernetes CPU-based autoscaling.
+        autoscaling.knative.dev/class: hpa.autoscaling.knative.dev
+        autoscaling.knative.dev/metric: cpu
+
+### Add KPA
+      annotations:
+        # Knative concurrency-based autoscaling (default).
+        autoscaling.knative.dev/class: kpa.autoscaling.knative.dev
+        autoscaling.knative.dev/metric: concurrency
+        # Target 10 requests in-flight per pod.
+        autoscaling.knative.dev/target: "10"
+        # Disable scale to zero with a minScale of 1.
+        autoscaling.knative.dev/minScale: "1"
+        # Limit scaling to 100 pods.
+        autoscaling.knative.dev/maxScale: "100"
+
+
+Experiments:
+
+1. Send 60 seconds of traffic maintaining 100 concurrent requests.
+
+	~/go/bin/hey -z 60s -c 100 -host "autoscale-go.default.knative-demo.ss-ops.com" "http://${IP_ADDRESS?}?sleep=100&prime=10000&bloat=5"
+
+2. Send 60 seconds of traffic maintaining 100 qps with long requests (1 sec).
+	~/go/bin/hey -z 60s -q 100 \
+	  -host "autoscale-go.default.knative-demo.ss-ops.com" \
+	  "http://${IP_ADDRESS?}?sleep=10"
+
+3. Send 60 seconds of traffic maintaining 100 qps with long requests (1 sec).
+
+	~/go/bin/hey -z 60s -q 100 -host "autoscale-go.default.knative-demo.ss-ops.com" "http://${IP_ADDRESS?}?sleep=1000"
+
+4. Send 60 seconds of traffic with heavy CPU usage (~1 cpu/sec/request, total 100 cpus).
+
+	~/go/bin/hey -z 60s -q 100 -host "autoscale-go.default.knative-demo.ss-ops.com" "http://${IP_ADDRESS?}?prime=40000000"
+
+5. Send 60 seconds of traffic with heavy memory usage (1 gb/request, total 5 gb).
+
+	~/go/bin/hey -z 60s -c 5 -host "autoscale-go.default.knative-demo.ss-ops.com" "http://${IP_ADDRESS?}?bloat=1000"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
