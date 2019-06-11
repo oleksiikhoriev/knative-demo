@@ -7,8 +7,9 @@ spec:
   template:
     metadata:
       annotations:
-        # Target 10 in-flight-requests per pod. Default is 100
-        autoscaling.knative.dev/target: "10"
+        # Standard Kubernetes CPU-based autoscaling.
+        autoscaling.knative.dev/class: hpa.autoscaling.knative.dev
+        autoscaling.knative.dev/metric: cpu
     spec:
       containers:
       - image: gcr.io/knative-samples/autoscale-go:0.1
